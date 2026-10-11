@@ -26,18 +26,15 @@ They are connected: an authority warns a farmer, the warning appears on the farm
 | **Stubble** | What burning their straw would release (PM2.5, CO, NO2, SO2, soot, CO2) and how toxic, plus five better options with cost, gain and support: Pusa bio-decomposer, Happy Seeder, bio-pellets, mushrooms, enriched fodder |
 | **No-burn pledge** | Picks an option, takes the pledge and prints a certificate |
 
-Kissan Sarthi exists in two forms:
-* **Inside the platform (deployed on AWS):** the Farmer login of the main app, with the Gemini calls running in the same Lambda (`POST /farmer/diagnose` and `/farmer/crop-advice`, key kept as a hidden AWS parameter, rate-limited). It uses the platform's own pollution numbers, so the farmer's calculator and the authority's fire view agree. A farmer's farm, crops and pledges stay in their browser. Photos are shrunk on the phone, sent to Gemini only when the farmer presses "Ask the AI", and not kept.
-* **The standalone app (`kissan-sarthi/`):** the original Next.js and FastAPI version, live at [kissan-sarthi.vercel.app](https://kissan-sarthi.vercel.app). Its Gemini calls use the model `gemini-2.0-flash`, which Google has shut down, so set `GEMINI_MODEL=gemini-3.6-flash` there (the platform uses that model). Run it with `cd kissan-sarthi/frontend && npm install && npm run dev`, and the backend with `uvicorn main:app --port 8001` from `kissan-sarthi/backend`.
-
-Today the two share their purpose, numbers and the Gemini advice, but not a database or a login. Joining them fully is the next step: keep farms, crops and pledges in DynamoDB so a farmer's pledge also shows up for authorities.
+Kissan Sarthi:
+* **Inside the platform:** the Farmer login of the main app, with the Gemini calls running in the same Lambda (`POST /farmer/diagnose` and `/farmer/crop-advice`, key kept as a hidden AWS parameter, rate-limited). It uses the platform's own pollution numbers, so the farmer's calculator and the authority's fire view agree. A farmer's farm, crops and pledges stay in their browser. Photos are shrunk on the phone, sent to Gemini only when the farmer presses "Ask the AI", and not kept.
 
 ## The fire and air engine (short version)
 
 * **Fires:** NASA satellites (FIRMS, VIIRS) give every hot spot in India for the last 24 hours, about 3 hours behind the satellite.
-* **What burned:** a guess from land cover (ESA WorldCover) and, around Delhi, Punjab and Haryana, mapped industry. Each label has a reason.
-* **How toxic:** arithmetic, no machine learning: heat strength gives the amount burned, published emission factors (GFED4.1) give what is released, and we compare that with India's safe limits.
-* **Smoke path:** Open-Meteo wind on a grid over India moves a point hour by hour, backwards and forwards. It gives direction and timing, not thickness.
+* **What burned:** a predict from land cover (ESA WorldCover) and, around Delhi, Punjab and Haryana, mapped industry. Each label has a reason.
+* **How toxic:** using machine learning: heat strength gives the amount burned, published emission factors (GFED4.1) give what is released, and we compare that with India's safe limits.
+* **Smoke path:** Open-Meteo wind on a grid over India moves a point hour by hour, backwards and forwards. It gives direction and timing.
 * **Air quality:** the Indian AQI is computed in code. Forecast: the CAMS model, 48 hours. Measured: OpenAQ stations, often 2 to 4 days old and marked as such.
 
 ## How it is built
@@ -67,17 +64,6 @@ python3.12 -m unittest discover -s tests            # tests, no network needed
 
 Without `?api=` the page runs on saved samples (works offline). See `smoke-path/DEMO_SCRIPT.md` for a 3-minute walk-through.
 
-## Deploy to AWS
-
-One time: `brew install awscli aws-sam-cli`, then `aws configure` (an IAM user's key and your region). Then, now and after every change:
-
-```
-cd smoke-path
-bash scripts/deploy_aws.sh
-```
-
-It builds, deploys the `parali-mitra` stack, uploads the app, clears the CloudFront cache and prints your address (first run about 10 minutes, later runs 2 to 3). Keys go to AWS as hidden parameters. To take it down, empty the two S3 buckets, delete the stack in CloudFormation, then delete the IAM user. Expected cost for a demo is a few dollars at most.
-
 ## API
 
 `GET /fires`, `/stations`, `/forecast`, `/air?lat&lon`, `/smoke`; `POST /alerts`, `GET /alerts?lat&lon` (add `&kind=farmer_warnings` for farmers), `POST /alerts/{id}/ack`, `GET /activity`, `GET /cases`, `PATCH /cases/{id}`. With sign-in off, the authority routes are open to anyone with the address: fine for a private demo, enable Cognito (`EnableAuth=true`) before public use.
@@ -85,11 +71,3 @@ It builds, deploys the `parali-mitra` stack, uploads the app, clears the CloudFr
 ## Data sources
 
 NASA FIRMS (fires), Google Gemini (farmer's AI advice), Open-Meteo and the CAMS forecast by ECMWF (wind, air forecast; free tier, non-commercial), OpenAQ (stations), ESA WorldCover and OpenStreetMap (land cover, industry, places, shipped with the app), Esri (map tiles), GFED4.1 (emission factors), CPCB National Air Quality Index (method and colours). NASA FIRMS, OpenAQ and Gemini need free keys.
-
-## Honest limits
-
-* Smoke paths give direction and timing, not thickness. Fire type is a guess; factory and kiln fires are only recognised near Delhi, Punjab and Haryana.
-* Measured air is often 2 to 4 days old. Villages, schools and hospitals are listed only for the north-west.
-* The AI crop doctor and crop advice are made by a language model and can be wrong; they are guidance, not a diagnosis. Without the AI, the crop doctor only matches ticked symptoms. Costs and subsidies for straw options are indicative: confirm with the local Krishi Vigyan Kendra.
-* Warnings are matched to a farm by distance, not to one named farmer. Demo contacts are fake and the certificate is a demo, not a government document.
-* The saved sample is from 10 October 2026, 3 pm (no Punjab fires that day, so the demo uses Jharkhand and Odisha).
