@@ -427,7 +427,7 @@ def sns_notifier(env=None):
         import boto3  # noqa: PLC0415 - only on AWS
 
         who = alert["target"]["name"] if alert["kind"] == "source_warning" else f"{len(alert['target']['places'])} places"
-        boto3.client("sns").publish(TopicArn=topic, Subject=f"Parali Mitra: {alert['kind'].replace('_', ' ')}"[:100],
+        boto3.client("sns").publish(TopicArn=topic, Subject=f"VayuRahshak: {alert['kind'].replace('_', ' ')}"[:100],
                                     Message=f"To: {who}\n\n{alert['message']}")
         return True
 

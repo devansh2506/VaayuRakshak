@@ -70,7 +70,7 @@ def route(method, target, headers=None, body=None):
     parts = urlsplit(target)
     path = parts.path or "/"
     accepts_gzip = "gzip" in str((headers or {}).get("Accept-Encoding", "")).lower()
-    if path in API_PATHS or path.startswith("/cases/") or (path.startswith("/alerts/") and path.endswith("/ack")):
+    if path in API_PATHS or path.startswith("/cases/") or (path.startswith("/alerts/") and path.endswith("/ack")) or path.startswith("/farmer/"):
         resp = lambda_handler(make_event(method, path, parts.query, headers, body))
         out = resp["body"]
         data = base64.b64decode(out) if resp.get("isBase64Encoded") else out.encode("utf-8")

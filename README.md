@@ -1,10 +1,10 @@
-# Parali Mitra (पराली मित्र)
+# VayuRahshak (वायुरक्षक)
 
 **One platform for the crop-residue problem in India: the farmer who can stop burning, the authority who has to act, and the citizen who breathes the smoke.**
 
-Every October farmers burn straw because the alternatives are unclear, officials cannot see which fires matter, and people downwind find out when the air turns bad. Parali Mitra puts all three on the same data. It was built for the WeMakeDevs x AWS hackathon (8 to 11 October 2026) and runs on AWS.
+Every October farmers burn straw because the alternatives are unclear, officials cannot see which fires matter, and people downwind find out when the air turns bad. VayuRahshak puts all three on the same data. It was built for the WeMakeDevs x AWS hackathon (8 to 11 October 2026) and runs on AWS.
 
-**Live project: [Parali Mitra](https://d1qht8bqoe1eyl.cloudfront.net)** (the demo may be taken down after the hackathon)
+**Live project: [VayuRahshak](https://d1qht8bqoe1eyl.cloudfront.net)** (the demo may be taken down after the hackathon)
 
 ## The three sides
 
@@ -21,16 +21,16 @@ They are connected: an authority warns a farmer, the warning appears on the farm
 | Tool | What the farmer gets |
 |---|---|
 | **My farm** | Registers the farm (place, land size, soil, irrigation). Sees fires and smoke within 25 km, and warnings from authorities with an "I have read this" button |
-| **Crops** | 20 common Indian crops with sowing date, expected harvest and a care guide for the stage the crop is in |
-| **Crop doctor** | Ticks what they see (yellow stripes, white powder, stem holes, spots, insects, wilting, pale leaves) and gets the likely problem, organic steps, standard label doses and the Kisan Call Centre number (1800-180-1551) |
+| **Crops** | 20 common Indian crops with sowing date, expected harvest and a care guide for the stage the crop is in, plus **Gemini** advice for that crop at its stage (tasks for the next two weeks, pests to watch, weather) |
+| **Crop doctor** | Takes a photo and/or ticks what they see (yellow stripes, white powder, stem holes, spots, insects, wilting, pale leaves). **Google Gemini** looks at the photo and says what is likely wrong, with organic steps, standard label doses and the Kisan Call Centre number (1800-180-1551). Without the AI, a symptom guide gives the same kind of answer |
 | **Stubble** | What burning their straw would release (PM2.5, CO, NO2, SO2, soot, CO2) and how toxic, plus five better options with cost, gain and support: Pusa bio-decomposer, Happy Seeder, bio-pellets, mushrooms, enriched fodder |
 | **No-burn pledge** | Picks an option, takes the pledge and prints a certificate |
 
 Kissan Sarthi exists in two forms:
-* **Inside the platform (deployed on AWS):** the Farmer login of the main app. It uses the platform's own pollution numbers, so the farmer's calculator and the authority's fire view agree. A farmer's farm, crops and pledges stay in their browser.
-* **The standalone app (`kissan-sarthi/`):** the original Next.js and FastAPI version, live at [kissan-sarthi.vercel.app](https://kissan-sarthi.vercel.app). It adds AI crop analysis and photo diagnosis through Google Gemini when a `GEMINI_API_KEY` is set (built-in defaults otherwise). Run it with `cd kissan-sarthi/frontend && npm install && npm run dev`, and the backend with `uvicorn main:app --port 8001` from `kissan-sarthi/backend`.
+* **Inside the platform (deployed on AWS):** the Farmer login of the main app, with the Gemini calls running in the same Lambda (`POST /farmer/diagnose` and `/farmer/crop-advice`, key kept as a hidden AWS parameter, rate-limited). It uses the platform's own pollution numbers, so the farmer's calculator and the authority's fire view agree. A farmer's farm, crops and pledges stay in their browser. Photos are shrunk on the phone, sent to Gemini only when the farmer presses "Ask the AI", and not kept.
+* **The standalone app (`kissan-sarthi/`):** the original Next.js and FastAPI version, live at [kissan-sarthi.vercel.app](https://kissan-sarthi.vercel.app). Its Gemini calls use the model `gemini-2.0-flash`, which Google has shut down, so set `GEMINI_MODEL=gemini-3.6-flash` there (the platform uses that model). Run it with `cd kissan-sarthi/frontend && npm install && npm run dev`, and the backend with `uvicorn main:app --port 8001` from `kissan-sarthi/backend`.
 
-Today the two share their purpose and numbers but not a database or a login; the AI features live only in the standalone app. Joining them is the next step: move its AI routes behind the platform API and keep farms, crops and pledges in DynamoDB.
+Today the two share their purpose, numbers and the Gemini advice, but not a database or a login. Joining them fully is the next step: keep farms, crops and pledges in DynamoDB so a farmer's pledge also shows up for authorities.
 
 ## The fire and air engine (short version)
 
@@ -57,7 +57,7 @@ kissan-sarthi/   the standalone farmer app (Next.js, FastAPI, Gemini)
 
 ## Run it
 
-You need Python 3.12 and two free keys in `smoke-path/.env` (gitignored): `FIRMS_MAP_KEY` (firms.modaps.eosdis.nasa.gov/api/map_key) and `OPENAQ_API_KEY` (explore.openaq.org/register).
+You need Python 3.12 and free keys in `smoke-path/.env` (gitignored): `FIRMS_MAP_KEY` (firms.modaps.eosdis.nasa.gov/api/map_key), `OPENAQ_API_KEY` (explore.openaq.org/register) and `GEMINI_API_KEY` (aistudio.google.com, for the farmer's AI advice; optional).
 
 ```
 cd smoke-path
@@ -84,12 +84,12 @@ It builds, deploys the `parali-mitra` stack, uploads the app, clears the CloudFr
 
 ## Data sources
 
-NASA FIRMS (fires), Open-Meteo and the CAMS forecast by ECMWF (wind, air forecast; free tier, non-commercial), OpenAQ (stations), ESA WorldCover and OpenStreetMap (land cover, industry, places, shipped with the app), Esri (map tiles), GFED4.1 (emission factors), CPCB National Air Quality Index (method and colours). NASA FIRMS and OpenAQ need free keys.
+NASA FIRMS (fires), Google Gemini (farmer's AI advice), Open-Meteo and the CAMS forecast by ECMWF (wind, air forecast; free tier, non-commercial), OpenAQ (stations), ESA WorldCover and OpenStreetMap (land cover, industry, places, shipped with the app), Esri (map tiles), GFED4.1 (emission factors), CPCB National Air Quality Index (method and colours). NASA FIRMS, OpenAQ and Gemini need free keys.
 
 ## Honest limits
 
 * Smoke paths give direction and timing, not thickness. Fire type is a guess; factory and kiln fires are only recognised near Delhi, Punjab and Haryana.
 * Measured air is often 2 to 4 days old. Villages, schools and hospitals are listed only for the north-west.
-* The crop doctor matches ticked symptoms to common problems; it does not analyse photos and is not a diagnosis. Costs and subsidies for straw options are indicative: confirm with the local Krishi Vigyan Kendra.
+* The AI crop doctor and crop advice are made by a language model and can be wrong; they are guidance, not a diagnosis. Without the AI, the crop doctor only matches ticked symptoms. Costs and subsidies for straw options are indicative: confirm with the local Krishi Vigyan Kendra.
 * Warnings are matched to a farm by distance, not to one named farmer. Demo contacts are fake and the certificate is a demo, not a government document.
 * The saved sample is from 10 October 2026, 3 pm (no Punjab fires that day, so the demo uses Jharkhand and Odisha).

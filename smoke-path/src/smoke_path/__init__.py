@@ -1,4 +1,4 @@
-"""Parali Mitra, Feature 6: likely smoke path from a burning field.
+"""VayuRahshak: likely smoke path from a burning field.
 
 A simple wind-following model, not a smoke dispersion model.
 """

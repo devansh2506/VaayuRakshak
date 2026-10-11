@@ -7,7 +7,7 @@ so the story uses the sample's real fires in Jharkhand and Odisha. On the day yo
 
 | Time | Click | Say |
 |---|---|---|
-| 0:00 | Landing page | "NASA satellites see fires. Parali Mitra shows what is burning, how toxic, where the smoke goes, and warns people in its way." |
+| 0:00 | Landing page | "NASA satellites see fires. VayuRahshak shows what is burning, how toxic, where the smoke goes, and warns people in its way." |
 | 0:15 | **I'm a citizen** > **Continue as demo citizen** | "Two kinds of users. First, a citizen." |
 | 0:25 | Under "Where smoke is heading right now" click the first chip (Bisoi) | "She picks her town. We even suggest places the smoke is heading to." |
 | 0:35 | My area page | "Air near her: Moderate, 185. The next 48 hours. And: smoke from 4 fires may reach her, the first in about 2 hours." Scroll to the mini map. |

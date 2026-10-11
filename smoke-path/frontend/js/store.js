@@ -6,6 +6,15 @@
 
   // ---- settings from the address and the config block ----------------------------------------------
   var q = new URLSearchParams(window.location.search);
+  // ?reset=1 clears everything this app saved in this browser (login, farm, crops, plan, pledges, alerts), so you see it as a new user.
+  if (q.get("reset") === "1") {
+    try {
+      Object.keys(localStorage).filter(function (k) { return k.indexOf("pm.") === 0; }).forEach(function (k) { localStorage.removeItem(k); });
+      sessionStorage.clear();
+    } catch (e) { /* storage may be blocked */ }
+    q.delete("reset");
+    window.history.replaceState(null, "", window.location.pathname + (q.toString() ? "?" + q.toString() : "") + "#/");
+  }
   var cfg = window.PM_CONFIG || {};
   // The server address: ?api= wins, then the default in index.html (PM_CONFIG.api), and ?demo=1 forces the saved sample.
   var apiParam = q.get("demo") === "1" ? "" : (q.get("api") !== null ? q.get("api") : (cfg.api || "")).trim();

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One command to put Parali Mitra on AWS: backend, web app, cache warm-up.
+# One command to put VayuRahshak on AWS: backend, web app, cache warm-up.
 #
 #   cd smoke-path && bash scripts/deploy_aws.sh
 #
@@ -30,6 +30,7 @@ aws sts get-caller-identity --query '[Account,Arn]' --output text || { echo "Not
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 if [ -z "${FIRMS_MAP_KEY:-}" ]; then echo "FIRMS_MAP_KEY is missing in smoke-path/.env (the fires need it)."; exit 1; fi
 [ -z "${OPENAQ_API_KEY:-}" ] && echo "Note: OPENAQ_API_KEY is empty, so the measured air stations will be missing."
+[ -z "${GEMINI_API_KEY:-}" ] && echo "Note: GEMINI_API_KEY is empty, so the farmer's AI crop doctor will be off (the symptom guide still works)."
 
 say "2/6 Building the backend"
 sam build
@@ -47,7 +48,7 @@ fi
 say "3/6 Deploying the stack (first time: about 10 minutes, CloudFront is slow)"
 sam deploy --stack-name "$STACK" --region "$REGION" --resolve-s3 --capabilities CAPABILITY_IAM \
   --no-confirm-changeset --no-fail-on-empty-changeset \
-  --parameter-overrides "FirmsMapKey=${FIRMS_MAP_KEY}" "OpenAqApiKey=${OPENAQ_API_KEY:-}"
+  --parameter-overrides "FirmsMapKey=${FIRMS_MAP_KEY}" "OpenAqApiKey=${OPENAQ_API_KEY:-}" "GeminiApiKey=${GEMINI_API_KEY:-}"
 
 out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
   --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }

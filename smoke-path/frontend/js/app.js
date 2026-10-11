@@ -18,7 +18,8 @@
       { id: "home", href: "#/farmer/home", icon: "leaf", key: "nav.farm" },
       { id: "crops", href: "#/farmer/crops", icon: "wheat", key: "nav.crops" },
       { id: "doctor", href: "#/farmer/doctor", icon: "camera", key: "nav.doctor" },
-      { id: "stubble", href: "#/farmer/stubble", icon: "award", key: "nav.stubble" },
+      { id: "stubble", href: "#/farmer/stubble", icon: "flame", key: "nav.stubble" },
+      { id: "pledge", href: "#/farmer/pledge", icon: "award", key: "nav.pledge" },
       { id: "alerts", href: "#/farmer/alerts", icon: "bell", key: "nav.warnings", count: true },
     ],
     authority: [
@@ -42,6 +43,7 @@
     ["farmer/crops", "farmer", "crops", function (el) { return PM.farmer.crops(el); }],
     ["farmer/doctor", "farmer", "doctor", function (el) { return PM.farmer.doctor(el); }],
     ["farmer/stubble", "farmer", "stubble", function (el) { return PM.farmer.stubble(el); }],
+    ["farmer/pledge", "farmer", "pledge", function (el) { return PM.farmer.pledge(el); }],
     ["farmer/alerts", "farmer", "alerts", function (el) { return PM.farmer.alerts(el); }],
     ["authority/dashboard", "authority", "dashboard", function (el) { return PM.authority.dashboard(el, {}); }],
     ["authority/fire/:key", "authority", "dashboard", function (el, a) { return PM.authority.dashboard(el, a); }],

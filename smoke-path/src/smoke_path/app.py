@@ -14,6 +14,11 @@ POST /alerts                  authority: warn a fire's source, or alert the peop
 GET /alerts?lat&lon&radius_km people: public alerts that affect an area (the citizen inbox)
 GET /alerts?...&kind=farmer_warnings  farmers: warnings sent to farmers about fires near a farm
 POST /alerts/<id>/ack         farmers: confirm a warning was read (the case becomes acknowledged)
+POST /farmer/diagnose         farmers: Gemini looks at a plant photo and the ticked symptoms
+POST /farmer/crop-advice      farmers: Gemini care advice for a crop at its stage
+POST /farmer/chat             farmers: the crop doctor chat (Gemini, one turn at a time)
+POST /farmer/stubble-plan     farmers: a Gemini plan to avoid burning this farm's straw
+POST /farmer/brief            farmers: a short Gemini brief for the farm, from facts measured on the page
 GET /activity                 authority: every alert sent
 GET /cases, PATCH /cases/<id> authority: the case of each fire and its status
 
@@ -32,7 +37,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import IST, air, alerts, firewatch, landuse, shared_cache, station_air
+from . import IST, air, alerts, firewatch, gemini, landuse, shared_cache, station_air
 from .apis import LiveApi
 from .net import ApiError
 from .pipeline import SmokeRequest, WindUnavailable, run
@@ -298,13 +303,13 @@ def _path(event):
     return (event.get("rawPath") or http.get("path") or event.get("path") or "/smoke").rstrip("/")
 
 
-def _body(event):
+def _body(event, limit=200_000):
     raw = event.get("body")
     if raw is None or str(raw).strip() == "":
         raise alerts.Invalid("Send a JSON body.")
     if event.get("isBase64Encoded"):
         raw = base64.b64decode(raw).decode("utf-8")
-    if len(raw) > 200_000:
+    if len(raw) > limit:
         raise alerts.Invalid("The request is too big.")
     try:
         return json.loads(raw)
@@ -355,6 +360,24 @@ def handle_alerts(event, method, path, params, store, now, notify):
     return None
 
 
+def handle_farmer(event, path, now=None, opener=None):
+    """POST /farmer/diagnose and POST /farmer/crop-advice: Gemini advice for farmers."""
+    try:
+        body = _body(event, limit=1_500_000)  # a photo the page has already shrunk
+        call = {"/diagnose": gemini.diagnose, "/crop-advice": gemini.crop_advice, "/chat": gemini.chat, "/stubble-plan": gemini.stubble_plan, "/brief": gemini.farm_brief}[
+            "/" + path.rsplit("/", 1)[1]]
+        return _response(200, _dump(call(body, opener) if opener else call(body)))
+    except (gemini.Invalid, alerts.Invalid, BadRequest) as err:
+        return _error(400, str(err))
+    except gemini.NotConfigured as err:
+        return _error(503, str(err))
+    except gemini.GeminiError as err:
+        return _error(502, str(err))
+    except Exception:  # noqa: BLE001 - log it, never leak internals
+        log.exception("farmer advice failed")
+        return _error(500, "Something went wrong while asking for advice.")
+
+
 ALERT_PATHS = ("/alerts", "/activity", "/cases")
 
 
@@ -370,6 +393,8 @@ def handle(event, api=None, cache=None, now=None, sample_path=SAMPLE_PATH, fire_
     if path.endswith(ALERT_PATHS) or "/cases/" in path or ("/alerts/" in path and path.endswith("/ack")):
         reply = handle_alerts(event, method, path, params, store, now, notify)
         return reply if reply is not None else _error(405, "That method is not allowed here.")
+    if method == "POST" and path.endswith(("/farmer/diagnose", "/farmer/crop-advice", "/farmer/chat", "/farmer/stubble-plan", "/farmer/brief")):
+        return handle_farmer(event, path, now)
     if method != "GET":
         return _error(405, "Use GET.")
     gz = _accepts_gzip(event)

@@ -340,7 +340,7 @@ class WebAppFilesTests(unittest.TestCase):
         app = (FRONT / "js" / "app.js").read_text(encoding="utf-8")
         for role in ("farmer", "citizen", "authority"):
             self.assertIn('href="#/login/' + role + '"', app)
-        for route in ("farmer/setup", "farmer/home", "farmer/crops", "farmer/doctor", "farmer/stubble", "farmer/alerts"):
+        for route in ("farmer/setup", "farmer/home", "farmer/crops", "farmer/doctor", "farmer/stubble", "farmer/pledge", "farmer/alerts"):
             self.assertIn('["' + route + '"', app)
         self.assertLess(app.index('href="#/login/farmer"'), app.index('href="#/login/citizen"'))  # farmer first, as asked
         self.assertNotIn("farmer/map", app)  # no map, forecast or air quality for farmers

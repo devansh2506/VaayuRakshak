@@ -580,7 +580,7 @@
     }));
     var a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
-    a.download = "parali-mitra-fires.csv"; document.body.appendChild(a); a.click(); a.remove();
+    a.download = "vayurahshak-fires.csv"; document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ---- cases board --------------------------------------------------------------------------------------------------------------

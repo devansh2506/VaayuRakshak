@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  Parali Mitra (Feature 6): fires, smoke paths and air quality for India, with alerts and cases for
+  VayuRahshak (Feature 6): fires, smoke paths and air quality for India, with alerts and cases for
   authorities and farmers. S3 + CloudFront serve the web app and forward API calls; API Gateway HTTP API +
   one Lambda (Python 3.12) do the work; DynamoDB keeps alerts and cases; S3 also keeps a shared copy of the
   slow results; EventBridge refreshes it every 30 minutes. Amazon Cognito sign-in and SNS email are optional
@@ -18,6 +18,11 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: Free OpenAQ v3 API key (https://explore.openaq.org/register). Leave empty and the measured air tab has no stations.
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Google Gemini API key for the farmer's AI crop doctor and crop advice. Leave empty to switch the AI off (the symptom guide still works).
   WindLevel:
     Type: String
     Default: 120m
@@ -40,7 +45,7 @@ Parameters:
     Default: ""
     Description: >-
       Only with EnableAuth=true. A globally unique word for the sign-in page address
-      (<prefix>.auth.<region>.amazoncognito.com), for example parali-mitra-yourname.
+      (<prefix>.auth.<region>.amazoncognito.com), for example vayurahshak-yourname.
   AppUrl:
     Type: String
     Default: http://localhost:8000/index.html
@@ -78,7 +83,7 @@ Resources:
   SmokeApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Description: Parali Mitra API
+      Description: VayuRahshak API
       CorsConfiguration:
         AllowOrigins:
           - "*"
@@ -95,6 +100,23 @@ Resources:
         # Protects the free upstream APIs (and your FIRMS key quota) from floods.
         ThrottlingBurstLimit: 100
         ThrottlingRateLimit: 40
+      RouteSettings:
+        # Each call here is a paid-quota call to Gemini, so these are kept low.
+        "POST /farmer/diagnose":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
+        "POST /farmer/crop-advice":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
+        "POST /farmer/chat":
+          ThrottlingBurstLimit: 10
+          ThrottlingRateLimit: 3
+        "POST /farmer/stubble-plan":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
+        "POST /farmer/brief":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
 
   # ---- the web app: a private S3 bucket behind CloudFront (which also forwards the API paths to API Gateway) ------
   SiteBucket:
@@ -141,7 +163,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: Parali Mitra web app and API
+        Comment: VayuRahshak web app and API
         DefaultRootObject: index.html
         HttpVersion: http2and3
         PriceClass: PriceClass_200
@@ -209,6 +231,12 @@ Resources:
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /farmer/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /activity
             TargetOriginId: api
             ViewerProtocolPolicy: redirect-to-https
@@ -266,7 +294,7 @@ Resources:
     Type: AWS::SNS::Topic
     Condition: UseEmail
     Properties:
-      DisplayName: Parali Mitra alerts
+      DisplayName: VayuRahshak alerts
 
   AlertsSubscription:
     Type: AWS::SNS::Subscription
@@ -281,7 +309,7 @@ Resources:
     Type: AWS::Cognito::UserPool
     Condition: UseAuth
     Properties:
-      UserPoolName: parali-mitra
+      UserPoolName: vayurahshak
       UsernameAttributes:
         - email
       AutoVerifiedAttributes:
@@ -301,7 +329,7 @@ Resources:
     Condition: UseAuth
     Properties:
       UserPoolId: !Ref UserPool
-      ClientName: parali-mitra-web
+      ClientName: vayurahshak-web
       GenerateSecret: false
       SupportedIdentityProviders:
         - COGNITO
@@ -365,7 +393,7 @@ Resources:
   SmokePathFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: "Parali Mitra: fires, smoke paths, air quality, alerts and cases"
+      Description: "VayuRahshak: fires, smoke paths, air quality, alerts and cases"
       CodeUri: src/
       Handler: smoke_path.app.lambda_handler
       Runtime: python3.12
@@ -390,6 +418,8 @@ Resources:
           FIRMS_MAP_KEY: !Ref FirmsMapKey
           # API key consumed by smoke_path/stations.py (OpenAQ, fallback for live air). From the NoEcho parameter.
           OPENAQ_API_KEY: !Ref OpenAqApiKey
+          # API key consumed by smoke_path/gemini.py (Google Gemini, farmer's AI advice). From the NoEcho parameter.
+          GEMINI_API_KEY: !Ref GeminiApiKey
           WIND_LEVEL: !Ref WindLevel
           OVERPASS_URL: !Ref OverpassUrl
           ALERTS_TABLE: !Ref AlertsTable
@@ -404,6 +434,36 @@ Resources:
           Properties:
             Schedule: rate(30 minutes)
             Input: '{"warm": true}'
+        PostFarmerDiagnose:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SmokeApi
+            Path: /farmer/diagnose
+            Method: POST
+        PostFarmerChat:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SmokeApi
+            Path: /farmer/chat
+            Method: POST
+        PostFarmerStubblePlan:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SmokeApi
+            Path: /farmer/stubble-plan
+            Method: POST
+        PostFarmerBrief:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SmokeApi
+            Path: /farmer/brief
+            Method: POST
+        PostFarmerCropAdvice:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SmokeApi
+            Path: /farmer/crop-advice
+            Method: POST
         GetSmoke:
           Type: HttpApi
           Properties:

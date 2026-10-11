@@ -113,6 +113,12 @@
   }
 
   // ---- the data screens read --------------------------------------------------------------------------------------
+  /** An AI call. Live site only: the demo has no server to ask. */
+  function ai(path, body) {
+    if (state.mode !== "live") return Promise.reject(new Error("demo"));
+    return request("POST", path, body);
+  }
+
   var api = (PM.api = {
     mode: function () { return state.mode; },
     fellBack: function () { return state.fell; },
@@ -199,6 +205,18 @@
     ackWarning: async function (id, name) {
       if (state.mode === "live") return request("POST", "/alerts/" + encodeURIComponent(id) + "/ack", { name: name });
       return PM.local.ack(id, name);
+    },
+    /** Gemini looks at a plant photo and the ticked symptoms. Live site only: the demo has no server to ask. */
+    farmerChat: function (body) { return ai("/farmer/chat", body); },
+    farmerPlan: function (body) { return ai("/farmer/stubble-plan", body); },
+    farmerBrief: function (body) { return ai("/farmer/brief", body); },
+    farmerDiagnose: function (body) {
+      if (state.mode !== "live") return Promise.reject(new Error("demo"));
+      return request("POST", "/farmer/diagnose", body);
+    },
+    farmerAdvice: function (body) {
+      if (state.mode !== "live") return Promise.reject(new Error("demo"));
+      return request("POST", "/farmer/crop-advice", body);
     },
     cases: async function () {
       if (state.mode === "live") return (await request("GET", "/cases")).cases || [];
