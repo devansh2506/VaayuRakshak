@@ -4,7 +4,7 @@
 
 Every October farmers burn straw because the alternatives are unclear, officials cannot see which fires matter, and people downwind find out when the air turns bad. VayuRahshak puts all three on the same data. It was built for the WeMakeDevs x AWS hackathon (8 to 11 October 2026) and runs on AWS.
 
-**Live project: [VayuRahshak](https://d1qht8bqoe1eyl.cloudfront.net)** (the demo may be taken down after the hackathon)
+**Live project: [VayuRahshak](https://d1qht8bqoe1eyl.cloudfront.net)**
 
 ## The three sides
 
